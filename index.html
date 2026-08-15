@@ -68,6 +68,18 @@
     </select>
   </section>
 
+  <section class="toolbar toolbar-modes">
+    <div class="segmented" id="passFilter" role="group" aria-label="合格状況で絞り込み">
+      <button type="button" data-pass="all" class="is-on" aria-pressed="true">すべて</button>
+      <button type="button" data-pass="open" aria-pressed="false">挑戦中</button>
+      <button type="button" data-pass="passed" aria-pressed="false">合格済み</button>
+    </div>
+    <div class="segmented" id="viewMode" role="group" aria-label="表示のしかた">
+      <button type="button" data-view="card" class="is-on" aria-pressed="true">カード</button>
+      <button type="button" data-view="compact" aria-pressed="false">短縮</button>
+    </div>
+  </section>
+
   <ul class="card-list" id="list"></ul>
 
   <p class="empty" id="empty" hidden>
@@ -95,6 +107,8 @@
         <ul class="suggest" id="nameSuggest" role="listbox" aria-label="資格の候補" hidden></ul>
       </div>
       <p class="hint">入力すると候補が出ます。選ぶと目標スコア・カテゴリなどが自動で入ります。</p>
+      <!-- 候補から選んだときの短縮名。短縮表示モードで使う -->
+      <input type="hidden" name="short">
     </div>
 
     <div class="row">

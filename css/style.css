@@ -219,6 +219,65 @@ body {
   color: var(--text);
 }
 
+.toolbar-modes { justify-content: space-between; }
+
+/* ---------- セグメント切り替え ---------- */
+.segmented {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.segmented button {
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 600;
+  padding: .35rem .8rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.segmented button:hover { color: var(--text); }
+
+.segmented button.is-on {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .08);
+}
+
+/* ---------- グループ見出し ---------- */
+.group-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: .25rem 0 -.25rem;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.group-head::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.group-head .count {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.group-head.is-passed { color: var(--ok); }
+
 /* ---------- cards ---------- */
 .card-list {
   list-style: none;
@@ -255,6 +314,42 @@ body {
 }
 
 .card-title a { color: inherit; }
+
+/* 通常はフルネーム、短縮モードでは短縮名だけを見せる */
+.card-title .t-short { display: none; }
+.card-list.compact .card-title .t-full { display: none; }
+.card-list.compact .card-title .t-short { display: inline; }
+
+/* ---------- 短縮表示モード ---------- */
+.card-list.compact {
+  grid-template-columns: 1fr;
+  gap: .5rem;
+}
+
+.card-list.compact .card {
+  padding: .6rem .75rem;
+  gap: .4rem;
+  box-shadow: none;
+}
+
+.card-list.compact .card-title { font-size: .95rem; }
+
+/* 一覧性を優先して、行数を増やす要素は畳む */
+.card-list.compact .memo,
+.card-list.compact .attempts,
+.card-list.compact .bar { display: none; }
+
+.card-list.compact .score-row { font-size: .75rem; }
+.card-list.compact .score-now { font-size: 1rem; }
+.card-list.compact .meta { font-size: .75rem; }
+
+.card-list.compact .card-actions { padding-top: 0; }
+.card-list.compact .card-actions .btn { font-size: .75rem; padding: .25rem .55rem; }
+
+@media (min-width: 720px) {
+  /* 横幅があるときは短縮モードを2列にして、さらに詰めて見せる */
+  .card-list.compact { grid-template-columns: repeat(2, 1fr); }
+}
 
 .badges {
   display: flex;

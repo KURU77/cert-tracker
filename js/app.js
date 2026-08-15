@@ -4,6 +4,7 @@
 
   const STORAGE_KEY = 'cert-tracker.items.v1';
   const THEME_KEY = 'cert-tracker.theme';
+  const VIEW_KEY = 'cert-tracker.view';
 
   const STATUSES = [
     { value: 'planning', label: '検討中' },
@@ -46,12 +47,19 @@
     menuBtn: $('#menuBtn'),
     menuList: $('#menuList'),
     toast: $('#toast'),
+    passFilter: $('#passFilter'),
+    viewMode: $('#viewMode'),
   };
 
   /** @type {Array<object>} */
   let items = [];
   let editingId = null;
   let attemptTargetId = null;
+
+  /** 'all' | 'open' | 'passed' — 合格状況での絞り込み */
+  let passFilter = 'all';
+  /** 'card' | 'compact' — 表示のしかた */
+  let viewMode = 'card';
 
   // ---------- storage ----------
 
@@ -80,6 +88,7 @@
     return {
       id: typeof item.id === 'string' && item.id ? item.id : newId(),
       name: String(item.name ?? '名称未設定'),
+      short: String(item.short ?? ''),
       category: String(item.category ?? ''),
       priority: PRIORITIES.some((p) => p.value === item.priority) ? item.priority : 'mid',
       status: STATUSES.some((s) => s.value === item.status) ? item.status : 'planning',
@@ -142,6 +151,24 @@
     return Math.round((target - today) / 86400000);
   }
 
+  function isPassed(item) {
+    return item.status === 'passed';
+  }
+
+  /** 短縮表示に使う名前。プリセット由来の短縮名が無ければ機械的に削る。 */
+  function shortLabel(item) {
+    if (item.short) return item.short;
+
+    let s = item.name.trim();
+    // 「〇〇検定 2級（日本史）」のように長いものだけ、補足の括弧を落とす。
+    // 括弧を先に外さないと、そのあとの「試験」落としが効かない。
+    if (s.length > 10) s = s.replace(/[（(][^）)]*[）)]/g, '');
+    // 「検定試験」は「検定」まで残す。単独の「試験」は落とす。
+    s = s.replace(/検定試験$/, '検定').replace(/試験$/, '');
+    s = s.replace(/\s+/g, ' ').trim();
+    return s || item.name;
+  }
+
   function statusLabel(value) {
     return STATUSES.find((s) => s.value === value)?.label ?? value;
   }
@@ -165,10 +192,12 @@
     const category = el.filterCategory.value;
 
     const filtered = items.filter((item) => {
+      if (passFilter === 'passed' && !isPassed(item)) return false;
+      if (passFilter === 'open' && isPassed(item)) return false;
       if (status && item.status !== status) return false;
       if (category && item.category !== category) return false;
       if (q) {
-        const hay = `${item.name} ${item.category} ${item.memo}`.toLowerCase();
+        const hay = `${item.name} ${item.short} ${item.category} ${item.memo}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -199,7 +228,19 @@
     renderFilterOptions();
 
     const shown = visibleItems();
-    el.list.replaceChildren(...shown.map(buildCard));
+    el.list.className = `card-list${viewMode === 'compact' ? ' compact' : ''}`;
+
+    // 「すべて」のときは合格済みを下にまとめて、挑戦中と見分けられるようにする。
+    const open = shown.filter((i) => !isPassed(i));
+    const passed = shown.filter(isPassed);
+    const grouped = passFilter === 'all' && open.length > 0 && passed.length > 0;
+
+    el.list.replaceChildren(...(grouped
+      ? [
+          groupHead('挑戦中', open.length, false), ...open.map(buildCard),
+          groupHead('合格済み', passed.length, true), ...passed.map(buildCard),
+        ]
+      : shown.map(buildCard)));
 
     const noItems = items.length === 0;
     el.empty.hidden = !(noItems || shown.length === 0);
@@ -209,6 +250,22 @@
       el.empty.innerHTML =
         'まだ資格が登録されていません。<br>「＋ 資格を追加」から、取りたい資格と目標スコアを登録してみましょう。';
     }
+  }
+
+  function groupHead(label, count, passedGroup) {
+    const li = document.createElement('li');
+    li.className = `group-head${passedGroup ? ' is-passed' : ''}`;
+    li.setAttribute('role', 'presentation');
+
+    const name = document.createElement('span');
+    name.textContent = label;
+
+    const n = document.createElement('span');
+    n.className = 'count';
+    n.textContent = `${count}件`;
+
+    li.append(name, n);
+    return li;
   }
 
   function renderStats() {
@@ -262,15 +319,25 @@
 
     const h3 = document.createElement('h3');
     h3.className = 'card-title';
+    // フルネームと短縮名を両方入れ、どちらを見せるかは CSS に任せる。
+    // こうすると表示モードの切り替えで作り直さずに済む。
+    const full = document.createElement('span');
+    full.className = 't-full';
+    full.textContent = item.name;
+    const brief = document.createElement('span');
+    brief.className = 't-short';
+    brief.textContent = shortLabel(item);
+    brief.title = item.name;
+
     if (item.url) {
       const a = document.createElement('a');
       a.href = item.url;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
-      a.textContent = item.name;
+      a.append(full, brief);
       h3.append(a);
     } else {
-      h3.textContent = item.name;
+      h3.append(full, brief);
     }
     top.append(h3);
 
@@ -553,6 +620,7 @@
   function applyPreset(preset) {
     const f = el.certForm.elements;
     f.name.value = preset.name;
+    f.short.value = preset.short ?? '';
     if (preset.category) f.category.value = preset.category;
 
     // scoreType が無いプリセットは合格基準が公表されていないもの。
@@ -588,6 +656,7 @@
 
     const f = el.certForm.elements;
     f.name.value = item?.name ?? '';
+    f.short.value = item?.short ?? '';
     f.category.value = item?.category ?? '';
     f.priority.value = item?.priority ?? 'mid';
     f.status.value = item?.status ?? 'planning';
@@ -626,6 +695,7 @@
     const f = el.certForm.elements;
     const data = {
       name: f.name.value.trim(),
+      short: f.short.value.trim(),
       category: f.category.value.trim(),
       priority: f.priority.value,
       status: f.status.value,
@@ -758,6 +828,21 @@
     el.statusSelect.replaceChildren(...STATUSES.map((s) => option(s.value, s.label)));
   }
 
+  function syncSegmented(container, key, value) {
+    for (const btn of container.querySelectorAll(`[data-${key}]`)) {
+      const on = btn.dataset[key] === value;
+      btn.classList.toggle('is-on', on);
+      btn.setAttribute('aria-pressed', String(on));
+    }
+  }
+
+  function initViewMode() {
+    const stored = localStorage.getItem(VIEW_KEY);
+    viewMode = stored === 'compact' ? 'compact' : 'card';
+    syncSegmented(el.viewMode, 'view', viewMode);
+    syncSegmented(el.passFilter, 'pass', passFilter);
+  }
+
   function toggleMenu(force) {
     const open = force ?? el.menuList.hidden;
     el.menuList.hidden = !open;
@@ -801,10 +886,32 @@
       node.addEventListener('input', render);
     }
 
+    el.passFilter.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-pass]');
+      if (!btn) return;
+      passFilter = btn.dataset.pass;
+      syncSegmented(el.passFilter, 'pass', passFilter);
+      render();
+    });
+
+    el.viewMode.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-view]');
+      if (!btn) return;
+      viewMode = btn.dataset.view;
+      localStorage.setItem(VIEW_KEY, viewMode);
+      syncSegmented(el.viewMode, 'view', viewMode);
+      render();
+    });
+
     el.scoreType.addEventListener('change', syncScoreFields);
 
     // 資格名のサジェスト
-    el.nameInput.addEventListener('input', () => { justPicked = false; renderSuggest(); });
+    el.nameInput.addEventListener('input', () => {
+      justPicked = false;
+      // 名前を打ち替えたらプリセット由来の短縮名は当てにならないので捨てる。
+      el.certForm.elements.short.value = '';
+      renderSuggest();
+    });
     el.nameInput.addEventListener('focus', renderSuggest);
     el.nameInput.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !el.nameSuggest.hidden) {
@@ -894,6 +1001,7 @@
   initTheme();
   fillSelects();
   bind();
+  initViewMode();
   load();
   render();
 
