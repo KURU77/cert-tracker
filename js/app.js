@@ -36,6 +36,8 @@
     dialogTitle: $('#dialogTitle'),
     scoreType: $('#scoreType'),
     scoreFields: $('#scoreFields'),
+    nameInput: $('#nameInput'),
+    nameSuggest: $('#nameSuggest'),
     attemptDialog: $('#attemptDialog'),
     attemptForm: $('#attemptForm'),
     attemptCertName: $('#attemptCertName'),
@@ -436,12 +438,136 @@
     return str.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // ---------- 資格名のサジェスト ----------
+
+  const PRESETS = Array.isArray(window.CERT_PRESETS) ? window.CERT_PRESETS : [];
+  const SUGGEST_LIMIT = 8;
+
+  /** 直前にプリセットが自動入力したメモ。手書きのメモを消さないための目印。 */
+  let lastPresetMemo = '';
+
+  /** 全角英数→半角、カタカナ→ひらがな、小文字化。表記ゆれを吸収して検索するため。 */
+  function foldText(str) {
+    return String(str)
+      .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+      .replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
+      .replace(/[\s　・（）()]/g, '')
+      .toLowerCase();
+  }
+
+  const presetIndex = PRESETS.map((p) => ({
+    preset: p,
+    name: foldText(p.name),
+    haystack: `${foldText(p.name)} ${foldText(p.alias ?? '')}`,
+  }));
+
+  /** 空白区切りの語をすべて含むものを拾う（「英検 2級」「aws アソシエイト」のような絞り込み用）。 */
+  function searchPresets(query) {
+    const tokens = String(query).split(/[\s　]+/).map(foldText).filter(Boolean);
+    if (!tokens.length) return [];
+
+    const hits = [];
+    for (const entry of presetIndex) {
+      if (!tokens.every((t) => entry.haystack.includes(t))) continue;
+      // 名前の先頭一致 → 名前に含む → 別名だけ一致、の順に並べる。
+      const first = tokens[0];
+      const rank = entry.name.startsWith(first) ? 0 : entry.name.includes(first) ? 1 : 2;
+      hits.push({ rank, preset: entry.preset });
+    }
+    return hits.sort((a, b) => a.rank - b.rank).slice(0, SUGGEST_LIMIT).map((h) => h.preset);
+  }
+
+  /** 候補行に出す「カテゴリ・目標」の一行説明。 */
+  function presetSummary(p) {
+    const parts = [];
+    if (p.category) parts.push(p.category);
+    if (p.scoreType === 'score' && p.targetScore != null) {
+      const unit = p.scoreUnit ?? '';
+      parts.push(`目標 ${p.targetScore}${unit}${p.maxScore != null ? ` / ${p.maxScore}${unit}` : ''}`);
+    } else if (p.scoreType === 'pass') {
+      parts.push('合否のみ');
+    }
+    if (p.fee != null) parts.push(`${p.fee.toLocaleString('ja-JP')}円`);
+    return parts.join('・');
+  }
+
+  function renderSuggest() {
+    if (!PRESETS.length) return;
+    const query = el.nameInput.value.trim();
+    const hits = searchPresets(query);
+
+    // 入力がプリセット名そのものなら、選択済みとみなして候補を閉じる。
+    const exact = hits.length === 1 && foldText(hits[0].name) === foldText(query);
+    if (!query || !hits.length || exact) {
+      closeSuggest();
+      return;
+    }
+
+    el.nameSuggest.replaceChildren(...hits.map((p) => {
+      const li = document.createElement('li');
+      li.setAttribute('role', 'presentation');
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('role', 'option');
+      btn.setAttribute('aria-selected', 'false');
+      btn.dataset.presetName = p.name;
+
+      const name = document.createElement('span');
+      name.className = 's-name';
+      name.textContent = p.name;
+
+      const meta = document.createElement('span');
+      meta.className = 's-meta';
+      meta.textContent = presetSummary(p);
+
+      btn.append(name, meta);
+      li.append(btn);
+      return li;
+    }));
+
+    el.nameSuggest.hidden = false;
+    el.nameInput.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeSuggest() {
+    el.nameSuggest.hidden = true;
+    el.nameSuggest.replaceChildren();
+    el.nameInput.setAttribute('aria-expanded', 'false');
+  }
+
+  /** 候補を選んだときに、フォームの各欄をプリセットの値で埋める。 */
+  function applyPreset(preset) {
+    const f = el.certForm.elements;
+    f.name.value = preset.name;
+    if (preset.category) f.category.value = preset.category;
+
+    f.scoreType.value = preset.scoreType ?? 'score';
+    f.targetScore.value = preset.targetScore ?? '';
+    f.maxScore.value = preset.maxScore ?? '';
+    f.scoreUnit.value = preset.scoreUnit ?? '点';
+    syncScoreFields();
+
+    f.fee.value = preset.fee ?? '';
+    f.url.value = preset.url ?? '';
+
+    // メモは自分で書いた内容を優先。空か、直前に別のプリセットが入れた文言のままなら差し替える。
+    if (!f.memo.value.trim() || f.memo.value === lastPresetMemo) {
+      f.memo.value = preset.memo ?? '';
+    }
+    lastPresetMemo = preset.memo ?? '';
+
+    closeSuggest();
+    toast(`「${preset.name}」の目安を入力しました`);
+  }
+
   // ---------- dialogs ----------
 
   function openCertDialog(item) {
     editingId = item?.id ?? null;
     el.dialogTitle.textContent = item ? '資格を編集' : '資格を追加';
     el.certForm.reset();
+    lastPresetMemo = '';
 
     const f = el.certForm.elements;
     f.name.value = item?.name ?? '';
@@ -458,8 +584,10 @@
     f.memo.value = item?.memo ?? '';
 
     syncScoreFields();
+    closeSuggest();
     el.certDialog.showModal();
-    f.name.focus();
+    // タッチ端末では自動フォーカスするとキーボードが即座にせり上がるので、ユーザー操作に任せる。
+    if (!window.matchMedia?.('(pointer: coarse)').matches) f.name.focus();
   }
 
   function syncScoreFields() {
@@ -657,6 +785,28 @@
     }
 
     el.scoreType.addEventListener('change', syncScoreFields);
+
+    // 資格名のサジェスト
+    el.nameInput.addEventListener('input', renderSuggest);
+    el.nameInput.addEventListener('focus', renderSuggest);
+    el.nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !el.nameSuggest.hidden) {
+        e.stopPropagation(); // 候補だけ閉じ、ダイアログは閉じない
+        closeSuggest();
+      }
+    });
+    // click だと blur が先に走って候補が消える端末があるため mousedown / touchstart で拾う。
+    el.nameSuggest.addEventListener('pointerdown', (e) => {
+      const btn = e.target.closest('[data-preset-name]');
+      if (!btn) return;
+      e.preventDefault();
+      const preset = PRESETS.find((p) => p.name === btn.dataset.presetName);
+      if (preset) applyPreset(preset);
+    });
+    el.certDialog.addEventListener('pointerdown', (e) => {
+      if (!e.target.closest('.combo')) closeSuggest();
+    });
+    el.certDialog.addEventListener('close', closeSuggest);
 
     el.certForm.addEventListener('submit', upsertFromForm);
     el.attemptForm.addEventListener('submit', addAttemptFromForm);

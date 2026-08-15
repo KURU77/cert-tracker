@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>資格・検定トラッカー</title>
 <meta name="description" content="取りたい資格や検定をリスト化し、目標スコアと受験記録を管理できるアプリ">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14161b" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-title" content="資格トラッカー">
+<meta name="format-detection" content="telephone=no">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -73,10 +77,16 @@
   <form method="dialog" id="certForm" class="form">
     <h2 id="dialogTitle">資格を追加</h2>
 
-    <label class="field">
-      <span class="label">資格・検定名 <em>必須</em></span>
-      <input type="text" name="name" required maxlength="80" placeholder="例: TOEIC L&amp;R">
-    </label>
+    <div class="field">
+      <label class="label" for="nameInput">資格・検定名 <em>必須</em></label>
+      <div class="combo">
+        <input type="text" id="nameInput" name="name" required maxlength="80"
+               placeholder="例: TOEIC、簿記、宅建…" autocomplete="off"
+               role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="nameSuggest">
+        <ul class="suggest" id="nameSuggest" role="listbox" aria-label="資格の候補" hidden></ul>
+      </div>
+      <p class="hint">入力すると候補が出ます。選ぶと目標スコア・カテゴリなどが自動で入ります。</p>
+    </div>
 
     <div class="row">
       <label class="field">
@@ -194,6 +204,7 @@
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
+<script src="js/presets.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
