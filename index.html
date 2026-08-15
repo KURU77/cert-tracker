@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>資格・検定トラッカー</title>
+<meta name="description" content="取りたい資格や検定をリスト化し、目標スコアと受験記録を管理できるアプリ">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <h1 class="logo"><span aria-hidden="true">🎓</span> 資格・検定トラッカー</h1>
+    <div class="header-actions">
+      <button type="button" id="themeToggle" class="icon-btn" title="テーマ切り替え" aria-label="テーマ切り替え">🌙</button>
+      <div class="menu">
+        <button type="button" id="menuBtn" class="icon-btn" title="データ管理" aria-label="データ管理" aria-haspopup="true" aria-expanded="false">⋯</button>
+        <div class="menu-list" id="menuList" role="menu" hidden>
+          <button type="button" id="exportBtn" role="menuitem">JSONで書き出し</button>
+          <button type="button" id="importBtn" role="menuitem">JSONを読み込み</button>
+          <button type="button" id="sampleBtn" role="menuitem">サンプルデータを追加</button>
+          <button type="button" id="clearBtn" role="menuitem" class="danger">すべて削除</button>
+        </div>
+      </div>
+      <button type="button" id="addBtn" class="btn btn-primary">＋ 資格を追加</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="stats" id="stats" aria-label="サマリー">
+    <div class="stat"><span class="stat-value" id="statTotal">0</span><span class="stat-label">登録数</span></div>
+    <div class="stat"><span class="stat-value" id="statStudying">0</span><span class="stat-label">勉強中</span></div>
+    <div class="stat"><span class="stat-value" id="statPassed">0</span><span class="stat-label">合格</span></div>
+    <div class="stat"><span class="stat-value" id="statNext">—</span><span class="stat-label">次の試験日</span></div>
+  </section>
+
+  <section class="toolbar" aria-label="絞り込み">
+    <input type="search" id="search" class="search" placeholder="資格名・メモを検索…" aria-label="検索">
+    <select id="filterStatus" aria-label="ステータスで絞り込み">
+      <option value="">すべてのステータス</option>
+    </select>
+    <select id="filterCategory" aria-label="カテゴリで絞り込み">
+      <option value="">すべてのカテゴリ</option>
+    </select>
+    <select id="sortBy" aria-label="並び替え">
+      <option value="priority">優先度が高い順</option>
+      <option value="examDate">試験日が近い順</option>
+      <option value="name">名前順</option>
+      <option value="progress">達成率が高い順</option>
+      <option value="created">追加が新しい順</option>
+    </select>
+  </section>
+
+  <ul class="card-list" id="list"></ul>
+
+  <p class="empty" id="empty" hidden>
+    まだ資格が登録されていません。<br>
+    「＋ 資格を追加」から、取りたい資格と目標スコアを登録してみましょう。
+  </p>
+
+</main>
+
+<footer class="site-footer wrap">
+  <p>データはこのブラウザのローカルストレージにのみ保存されます。サーバーには送信されません。</p>
+</footer>
+
+<!-- 追加・編集ダイアログ -->
+<dialog id="certDialog" class="dialog">
+  <form method="dialog" id="certForm" class="form">
+    <h2 id="dialogTitle">資格を追加</h2>
+
+    <label class="field">
+      <span class="label">資格・検定名 <em>必須</em></span>
+      <input type="text" name="name" required maxlength="80" placeholder="例: TOEIC L&amp;R">
+    </label>
+
+    <div class="row">
+      <label class="field">
+        <span class="label">カテゴリ</span>
+        <input type="text" name="category" list="categoryOptions" maxlength="30" placeholder="例: 語学">
+        <datalist id="categoryOptions"></datalist>
+      </label>
+      <label class="field">
+        <span class="label">優先度</span>
+        <select name="priority">
+          <option value="high">高</option>
+          <option value="mid" selected>中</option>
+          <option value="low">低</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="field">
+        <span class="label">ステータス</span>
+        <select name="status" id="statusSelect"></select>
+      </label>
+      <label class="field">
+        <span class="label">試験予定日</span>
+        <input type="date" name="examDate">
+      </label>
+    </div>
+
+    <fieldset class="fieldset">
+      <legend>目標</legend>
+      <label class="field">
+        <span class="label">評価方式</span>
+        <select name="scoreType" id="scoreType">
+          <option value="score">スコア・点数で評価</option>
+          <option value="pass">合否のみ（スコアなし）</option>
+        </select>
+      </label>
+      <div class="row score-fields" id="scoreFields">
+        <label class="field">
+          <span class="label">目標スコア</span>
+          <input type="number" name="targetScore" min="0" step="any" placeholder="例: 800">
+        </label>
+        <label class="field">
+          <span class="label">満点（任意）</span>
+          <input type="number" name="maxScore" min="0" step="any" placeholder="例: 990">
+        </label>
+        <label class="field">
+          <span class="label">単位</span>
+          <input type="text" name="scoreUnit" maxlength="8" placeholder="点">
+        </label>
+      </div>
+    </fieldset>
+
+    <div class="row">
+      <label class="field">
+        <span class="label">受験料（円）</span>
+        <input type="number" name="fee" min="0" step="1" placeholder="例: 7810">
+      </label>
+      <label class="field">
+        <span class="label">公式サイトURL</span>
+        <input type="url" name="url" placeholder="https://…">
+      </label>
+    </div>
+
+    <label class="field">
+      <span class="label">メモ</span>
+      <textarea name="memo" rows="3" maxlength="500" placeholder="使う参考書、勉強の計画など"></textarea>
+    </label>
+
+    <menu class="dialog-actions">
+      <button type="button" class="btn" data-close>キャンセル</button>
+      <button type="submit" class="btn btn-primary">保存</button>
+    </menu>
+  </form>
+</dialog>
+
+<!-- 受験記録ダイアログ -->
+<dialog id="attemptDialog" class="dialog">
+  <form method="dialog" id="attemptForm" class="form">
+    <h2>受験記録を追加</h2>
+    <p class="dialog-sub" id="attemptCertName"></p>
+
+    <div class="row">
+      <label class="field">
+        <span class="label">受験日 <em>必須</em></span>
+        <input type="date" name="date" required>
+      </label>
+      <label class="field" id="attemptScoreField">
+        <span class="label">スコア</span>
+        <input type="number" name="score" min="0" step="any" placeholder="例: 745">
+      </label>
+    </div>
+
+    <label class="field">
+      <span class="label">結果</span>
+      <select name="result">
+        <option value="">未記入</option>
+        <option value="passed">合格</option>
+        <option value="failed">不合格</option>
+      </select>
+    </label>
+
+    <label class="field">
+      <span class="label">メモ</span>
+      <input type="text" name="note" maxlength="120" placeholder="例: リスニングが伸びた">
+    </label>
+
+    <menu class="dialog-actions">
+      <button type="button" class="btn" data-close>キャンセル</button>
+      <button type="submit" class="btn btn-primary">記録する</button>
+    </menu>
+  </form>
+</dialog>
+
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
