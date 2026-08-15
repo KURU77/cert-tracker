@@ -865,6 +865,30 @@
     });
   }
 
+  // ---------- オフライン対応 ----------
+
+  /** Service Worker を登録して、電波がなくても起動できるようにする。 */
+  function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      reg.addEventListener('updatefound', () => {
+        const incoming = reg.installing;
+        if (!incoming) return;
+        incoming.addEventListener('statechange', () => {
+          // すでに動いている Service Worker がある状態でのインストール完了＝更新あり。
+          // 表示中の内容を差し替えると入力中のフォームが飛ぶので、反映は次回起動に回す。
+          if (incoming.state === 'installed' && navigator.serviceWorker.controller) {
+            toast('新しいバージョンを取得しました。次に開いたときに反映されます');
+          }
+        });
+      });
+    }).catch((err) => {
+      // オフライン対応が使えないだけで、アプリ自体は問題なく動く。
+      console.warn('Service Worker を登録できませんでした', err);
+    });
+  }
+
   // ---------- init ----------
 
   initTheme();
@@ -872,4 +896,7 @@
   bind();
   load();
   render();
+
+  if (document.readyState === 'complete') registerServiceWorker();
+  else window.addEventListener('load', registerServiceWorker);
 })();
