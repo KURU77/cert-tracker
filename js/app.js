@@ -446,6 +446,9 @@
   /** 直前にプリセットが自動入力したメモ。手書きのメモを消さないための目印。 */
   let lastPresetMemo = '';
 
+  /** 候補を選んだ直後かどうか。フォーカスし直しただけで候補が開くのを防ぐ。 */
+  let justPicked = false;
+
   /** 全角英数→半角、カタカナ→ひらがな、小文字化。表記ゆれを吸収して検索するため。 */
   function foldText(str) {
     return String(str)
@@ -459,6 +462,8 @@
     preset: p,
     name: foldText(p.name),
     haystack: `${foldText(p.name)} ${foldText(p.alias ?? '')}`,
+    // 「英検」「乙4」のような通称そのもので引かれたときに最優先するための語集合。
+    aliasWords: new Set(String(p.alias ?? '').split(/[\s　]+/).map(foldText).filter(Boolean)),
   }));
 
   /** 空白区切りの語をすべて含むものを拾う（「英検 2級」「aws アソシエイト」のような絞り込み用）。 */
@@ -466,12 +471,18 @@
     const tokens = String(query).split(/[\s　]+/).map(foldText).filter(Boolean);
     if (!tokens.length) return [];
 
+    const joined = tokens.join('');
+    const first = tokens[0];
     const hits = [];
     for (const entry of presetIndex) {
       if (!tokens.every((t) => entry.haystack.includes(t))) continue;
-      // 名前の先頭一致 → 名前に含む → 別名だけ一致、の順に並べる。
-      const first = tokens[0];
-      const rank = entry.name.startsWith(first) ? 0 : entry.name.includes(first) ? 1 : 2;
+      // 名前が完全一致 → 通称が完全一致 → 名前の先頭一致 → 名前に含む → その他、の順。
+      const rank =
+        entry.name === joined ? 0 :
+        entry.aliasWords.has(joined) ? 1 :
+        entry.name.startsWith(joined) ? 2 :
+        entry.name.startsWith(first) ? 3 :
+        entry.name.includes(first) ? 4 : 5;
       hits.push({ rank, preset: entry.preset });
     }
     return hits.sort((a, b) => a.rank - b.rank).slice(0, SUGGEST_LIMIT).map((h) => h.preset);
@@ -481,11 +492,13 @@
   function presetSummary(p) {
     const parts = [];
     if (p.category) parts.push(p.category);
-    if (p.scoreType === 'score' && p.targetScore != null) {
+    if (p.targetScore != null) {
       const unit = p.scoreUnit ?? '';
       parts.push(`目標 ${p.targetScore}${unit}${p.maxScore != null ? ` / ${p.maxScore}${unit}` : ''}`);
     } else if (p.scoreType === 'pass') {
       parts.push('合否のみ');
+    } else {
+      parts.push('目標は自分で設定');
     }
     if (p.fee != null) parts.push(`${p.fee.toLocaleString('ja-JP')}円`);
     return parts.join('・');
@@ -493,12 +506,12 @@
 
   function renderSuggest() {
     if (!PRESETS.length) return;
+    // 候補を選んだ直後は再表示しない。手で打ち直したら（input が飛んだら）また出す。
+    if (justPicked) { closeSuggest(); return; }
+
     const query = el.nameInput.value.trim();
     const hits = searchPresets(query);
-
-    // 入力がプリセット名そのものなら、選択済みとみなして候補を閉じる。
-    const exact = hits.length === 1 && foldText(hits[0].name) === foldText(query);
-    if (!query || !hits.length || exact) {
+    if (!query || !hits.length) {
       closeSuggest();
       return;
     }
@@ -542,6 +555,8 @@
     f.name.value = preset.name;
     if (preset.category) f.category.value = preset.category;
 
+    // scoreType が無いプリセットは合格基準が公表されていないもの。
+    // 評価方式はスコアのままにして、目標は本人に決めてもらう。
     f.scoreType.value = preset.scoreType ?? 'score';
     f.targetScore.value = preset.targetScore ?? '';
     f.maxScore.value = preset.maxScore ?? '';
@@ -557,6 +572,7 @@
     }
     lastPresetMemo = preset.memo ?? '';
 
+    justPicked = true;
     closeSuggest();
     toast(`「${preset.name}」の目安を入力しました`);
   }
@@ -568,6 +584,7 @@
     el.dialogTitle.textContent = item ? '資格を編集' : '資格を追加';
     el.certForm.reset();
     lastPresetMemo = '';
+    justPicked = Boolean(item); // 編集時は開いた直後に候補を出さない
 
     const f = el.certForm.elements;
     f.name.value = item?.name ?? '';
@@ -787,7 +804,7 @@
     el.scoreType.addEventListener('change', syncScoreFields);
 
     // 資格名のサジェスト
-    el.nameInput.addEventListener('input', renderSuggest);
+    el.nameInput.addEventListener('input', () => { justPicked = false; renderSuggest(); });
     el.nameInput.addEventListener('focus', renderSuggest);
     el.nameInput.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !el.nameSuggest.hidden) {
