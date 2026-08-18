@@ -672,8 +672,11 @@
     syncScoreFields();
     closeSuggest();
     el.certDialog.showModal();
-    // タッチ端末では自動フォーカスするとキーボードが即座にせり上がるので、ユーザー操作に任せる。
-    if (!window.matchMedia?.('(pointer: coarse)').matches) f.name.focus();
+    // マウスがある端末だけ名前欄にフォーカスする。
+    // スマホやタブレットで自動フォーカスすると、開いた瞬間にキーボードがせり上がって
+    // 画面の大半が隠れてしまうため。ダイアログ自体の初期フォーカスは
+    // 見出しの autofocus 属性で受け止めている。
+    if (window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) f.name.focus();
   }
 
   function syncScoreFields() {

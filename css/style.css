@@ -48,8 +48,20 @@
    上書きしてしまうため、hidden を常に優先させる。 */
 [hidden] { display: none !important; }
 
+/* 横スワイプで画面がずれないようにする。
+   overflow-x: clip はスクロールコンテナを作らないので、
+   hidden と違って sticky ヘッダーを壊さない。
+   overscroll-behavior-x はゴムのように弾む横方向の余韻を止める。 */
+html {
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+
 body {
   margin: 0;
+  max-width: 100%;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
@@ -73,6 +85,9 @@ body {
 }
 
 .header-inner {
+  /* ⋯メニューの位置の基準。ボタン基準だと画面が狭くてヘッダーが折り返したとき、
+     メニューが画面外にはみ出して切れてしまう。 */
+  position: relative;
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -135,12 +150,11 @@ body {
 .icon-btn:hover { background: var(--surface-2); }
 
 /* ---------- menu ---------- */
-.menu { position: relative; }
-
 .menu-list {
   position: absolute;
   right: 0;
   top: calc(100% + 6px);
+  max-width: calc(100vw - 2rem);
   min-width: 200px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -169,7 +183,7 @@ body {
 /* ---------- stats ---------- */
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
   gap: .75rem;
   margin: 1.5rem 0 1rem;
 }
@@ -284,7 +298,7 @@ body {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr));
   gap: 1rem;
 }
 
@@ -348,7 +362,7 @@ body {
 
 @media (min-width: 720px) {
   /* 横幅があるときは短縮モードを2列にして、さらに詰めて見せる */
-  .card-list.compact { grid-template-columns: repeat(2, 1fr); }
+  .card-list.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .badges {
@@ -641,6 +655,10 @@ body {
   font-size: .85rem;
   padding: .55rem 1rem;
   border-radius: 999px;
+  max-width: calc(100vw - 2rem);
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  text-align: center;
   box-shadow: var(--shadow);
   z-index: 50;
 }

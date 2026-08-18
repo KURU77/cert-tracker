@@ -96,7 +96,10 @@
 <!-- 追加・編集ダイアログ -->
 <dialog id="certDialog" class="dialog">
   <form method="dialog" id="certForm" class="form">
-    <h2 id="dialogTitle">資格を追加</h2>
+    <!-- showModal() は最初のフォーカス可能要素を自動でフォーカスするため、
+         そのままだと名前欄にフォーカスが入りスマホのキーボードがせり上がる。
+         見出しを autofocus 先にしてキーボードが出ないようにする。 -->
+    <h2 id="dialogTitle" tabindex="-1" autofocus>資格を追加</h2>
 
     <div class="field">
       <label class="label" for="nameInput">資格・検定名 <em>必須</em></label>
@@ -189,7 +192,7 @@
 <!-- 受験記録ダイアログ -->
 <dialog id="attemptDialog" class="dialog">
   <form method="dialog" id="attemptForm" class="form">
-    <h2>受験記録を追加</h2>
+    <h2 tabindex="-1" autofocus>受験記録を追加</h2>
     <p class="dialog-sub" id="attemptCertName"></p>
 
     <div class="row">

@@ -8,7 +8,7 @@
  * 収録ファイルを増やしたときは PRECACHE に足し、VERSION を上げる。
  */
 
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = `cert-tracker-${VERSION}`;
 
 /** 初回インストール時にまとめて取っておくファイル。これだけあれば完全オフラインで動く。 */
