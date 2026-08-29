@@ -507,7 +507,7 @@
 
   // ---------- 資格名のサジェスト ----------
 
-  const PRESETS = Array.isArray(window.CERT_PRESETS) ? window.CERT_PRESETS : [];
+  let PRESETS = Array.isArray(window.CERT_PRESETS) ? window.CERT_PRESETS : [];
   const SUGGEST_LIMIT = 8;
 
   /** 直前にプリセットが自動入力したメモ。手書きのメモを消さないための目印。 */
@@ -525,13 +525,28 @@
       .toLowerCase();
   }
 
-  const presetIndex = PRESETS.map((p) => ({
-    preset: p,
-    name: foldText(p.name),
-    haystack: `${foldText(p.name)} ${foldText(p.alias ?? '')}`,
-    // 「英検」「乙4」のような通称そのもので引かれたときに最優先するための語集合。
-    aliasWords: new Set(String(p.alias ?? '').split(/[\s　]+/).map(foldText).filter(Boolean)),
-  }));
+  function buildPresetIndex() {
+    return PRESETS.map((p) => ({
+      preset: p,
+      name: foldText(p.name),
+      haystack: `${foldText(p.name)} ${foldText(p.alias ?? '')}`,
+      // 「英検」「乙4」のような通称そのもので引かれたときに最優先するための語集合。
+      aliasWords: new Set(String(p.alias ?? '').split(/[\s　]+/).map(foldText).filter(Boolean)),
+    }));
+  }
+
+  let presetIndex = buildPresetIndex();
+
+  // 開発者向けのプリセット編集ツールが中身を書き換えたときに、
+  // 再読み込みなしで候補検索へ反映させるための入口。
+  window.__certTracker = {
+    reloadPresets() {
+      PRESETS = Array.isArray(window.CERT_PRESETS) ? window.CERT_PRESETS : [];
+      presetIndex = buildPresetIndex();
+    },
+    get render() { return render; },
+    get toast() { return toast; },
+  };
 
   /** 空白区切りの語をすべて含むものを拾う（「英検 2級」「aws アソシエイト」のような絞り込み用）。 */
   function searchPresets(query) {
