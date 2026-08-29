@@ -8,20 +8,27 @@
  *
  * ■ できること
  *   - プリセットの追加 / 編集 / 削除（削除は「候補から外す」）
- *   - 変更はこの端末の localStorage に持つ。本体の presets.js は書き換えない
- *   - 変更点を JSON で書き出し → tools/apply-overrides.mjs で presets.js に反映
- *   - presets.js を丸ごと書き出すこともできる
+ *   - 編集中はこの端末の localStorage に差分として持つ（下書き）
+ *   - 「GitHub に反映」で js/presets.js へ直接コミットする。
+ *     これで全ユーザーの自動入力候補が実際に変わる
+ *   - 手動でやりたいときは JSON を書き出して tools/apply-overrides.mjs で当てる
  *
- * ■ これは認証ではない
- *   静的サイトなのでサーバー側で誰かを判定できない。URL を知っていれば誰でも開ける。
- *   ただし編集結果はその人の端末に閉じており、公開中のデータは一切変わらない。
- *   秘密にしたい情報はここに置かないこと。
+ * ■ GitHub への反映について
+ *   静的サイトなのでサーバーがない。代わりに GitHub の API を直接叩く。
+ *   個人アクセストークンはこの端末の localStorage にだけ置き、
+ *   リポジトリには絶対に含めない。権限は対象リポジトリの Contents 読み書きだけで足りる。
+ *
+ * ■ 入口そのものは認証ではない
+ *   ?dev=1 を知っていれば誰でもパネルは開ける。ただし GitHub へ反映するには
+ *   トークンが要るので、公開中のプリセットを書き換えられるのはトークンを持つ人だけ。
  */
 (() => {
   'use strict';
 
   const DEV_KEY = 'cert-tracker.dev';
   const OVERRIDES_KEY = 'cert-tracker.presetOverrides.v1';
+  const GH_KEY = 'cert-tracker.github';        // 反映先の設定（トークン以外）
+  const GH_TOKEN_KEY = 'cert-tracker.githubToken';  // トークンは別キーに分けて持つ
 
   const FIELDS = ['name', 'short', 'alias', 'category', 'scoreType',
                   'targetScore', 'maxScore', 'scoreUnit', 'fee', 'url', 'memo'];
@@ -212,8 +219,9 @@
       '  <h2 tabindex="-1" autofocus>プリセット編集<span class="dev-badge">開発者用</span></h2>',
       '  <button type="button" class="btn" data-act="close">閉じる</button>',
       '</div>',
-      '<p class="dev-note">変更はこの端末にだけ保存されます。公開中のアプリは変わりません。',
-      '直したら「変更点を書き出し」で JSON を保存してください。</p>',
+      '<p class="dev-note">ここでの編集はまず下書きとしてこの端末に溜まります。',
+      '<strong>「GitHub に反映」を押すと js/presets.js に直接コミットされ、',
+      '全ユーザーの自動入力候補が変わります。</strong></p>',
       '<div class="dev-summary" id="devSummary"></div>',
       '<div class="dev-toolbar">',
       '  <input type="search" id="devSearch" placeholder="資格名・通称・別名で検索…" aria-label="プリセットを検索">',
@@ -221,6 +229,8 @@
       '</div>',
       '<ul class="dev-list" id="devList"></ul>',
       '<div class="dev-actions">',
+      '  <button type="button" class="btn btn-primary" data-act="publish">GitHub に反映</button>',
+      '  <button type="button" class="btn" data-act="gh-settings">反映先の設定</button>',
       '  <button type="button" class="btn" data-act="export-diff">変更点を書き出し</button>',
       '  <button type="button" class="btn" data-act="export-full">presets.js を書き出し</button>',
       '  <button type="button" class="btn" data-act="import">変更点を読み込み</button>',
@@ -250,6 +260,8 @@
     if (act === 'export-full') { exportFull(); return; }
     if (act === 'import') { dlg.querySelector('#devImportFile').click(); return; }
     if (act === 'reset') { resetAll(); return; }
+    if (act === 'publish') { publishToGitHub(); return; }
+    if (act === 'gh-settings') { openGhSettings(); return; }
 
     const name = btn.dataset.name;
     if (act === 'edit') { openEditor(name); return; }
@@ -361,9 +373,12 @@
     const d = diffCount();
     const total = d.edited + d.added + d.removed;
     summaryEl.className = `dev-summary${total ? ' has-diff' : ''}`;
+    const when = lastPublish?.at
+      ? `　最後の反映: ${new Date(lastPublish.at).toLocaleString('ja-JP')}`
+      : '';
     summaryEl.textContent = total
-      ? `未書き出しの変更: 追加 ${d.added} / 編集 ${d.edited} / 削除 ${d.removed}`
-      : '変更はありません。';
+      ? `未反映の変更: 追加 ${d.added} / 編集 ${d.edited} / 削除 ${d.removed}${when}`
+      : `変更はありません。${when}`;
   }
 
   // ---------- 編集フォーム ----------
@@ -522,6 +537,238 @@
     note(msg);
   }
 
+  // ---------- GitHub へ反映 ----------
+
+  const GH_DEFAULTS = { owner: 'KURU77', repo: 'cert-tracker', branch: 'main', path: 'js/presets.js' };
+
+  function ghConfig() {
+    try {
+      return { ...GH_DEFAULTS, ...JSON.parse(localStorage.getItem(GH_KEY) || '{}') };
+    } catch {
+      return { ...GH_DEFAULTS };
+    }
+  }
+
+  function ghToken() {
+    try { return localStorage.getItem(GH_TOKEN_KEY) || ''; } catch { return ''; }
+  }
+
+  /** UTF-8 の文字列を GitHub API が求める base64 にする。btoa は Latin-1 しか扱えない。 */
+  function toBase64(text) {
+    const bytes = new TextEncoder().encode(text);
+    let bin = '';
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return btoa(bin);
+  }
+
+  function fromBase64(b64) {
+    const bin = atob(b64.replace(/\n/g, ''));
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+
+  async function ghFetch(path, options = {}) {
+    const res = await fetch(`https://api.github.com${path}`, {
+      ...options,
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${ghToken()}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...options.headers,
+      },
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      let msg = `GitHub API ${res.status}`;
+      try { msg += `: ${JSON.parse(detail).message}`; } catch { /* 本文が JSON でないこともある */ }
+      throw new Error(msg);
+    }
+    return res.json();
+  }
+
+  async function publishToGitHub() {
+    if (!hasOverrides()) { note('反映する変更がありません'); return; }
+    if (!ghToken()) { note('先に「反映先の設定」でトークンを入れてください'); openGhSettings(); return; }
+
+    const cfg = ghConfig();
+    const d = diffCount();
+    const msg = prompt(
+      `js/presets.js に直接コミットします（追加 ${d.added} / 編集 ${d.edited} / 削除 ${d.removed}）。\nコミットメッセージ:`,
+      `プリセットを更新（追加 ${d.added} / 編集 ${d.edited} / 削除 ${d.removed}）`
+    );
+    if (msg === null) return;
+
+    const btn = dlg.querySelector('[data-act="publish"]');
+    btn.disabled = true;
+    btn.textContent = '反映中…';
+
+    try {
+      // いまの presets.js を取ってくる（sha が無いと更新できない）
+      const file = await ghFetch(
+        `/repos/${cfg.owner}/${cfg.repo}/contents/${cfg.path}?ref=${encodeURIComponent(cfg.branch)}`
+      );
+      const currentSource = fromBase64(file.content);
+
+      // 取得したソースを土台にして差分を当てる。
+      // BASE ではなく取得結果を使うのは、他の端末からの変更を踏み潰さないため。
+      const { source, report } = globalThis.PRESET_PATCH.applyOverrides(currentSource, overrides, BASE);
+
+      if (source === currentSource) {
+        note('反映できる変更がありませんでした');
+        return;
+      }
+
+      const commit = await ghFetch(`/repos/${cfg.owner}/${cfg.repo}/contents/${cfg.path}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          message: msg,
+          content: toBase64(source),
+          sha: file.sha,
+          branch: cfg.branch,
+        }),
+      });
+
+      lastPublish = {
+        at: new Date().toISOString(),
+        url: commit.commit?.html_url ?? '',
+        report,
+      };
+      savePublishState();
+      renderSummary();
+
+      const skipped = report.skipped.length ? `\n\n反映できなかったもの:\n${report.skipped.join('\n')}` : '';
+      alert(
+        `コミットしました。\n\n追加 ${report.added.length} / 編集 ${report.edited.length} / 削除 ${report.removed.length}`
+        + `\n\n公開サイトへの反映には1分ほどかかります。`
+        + `\n反映を確認したら「変更を全部破棄」で手元の下書きを片付けてください。${skipped}`
+      );
+    } catch (err) {
+      console.error(err);
+      alert(`反映できませんでした。\n\n${err.message}`);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'GitHub に反映';
+    }
+  }
+
+  let lastPublish = loadPublishState();
+
+  function loadPublishState() {
+    try { return JSON.parse(localStorage.getItem('cert-tracker.lastPublish') || 'null'); } catch { return null; }
+  }
+
+  function savePublishState() {
+    try { localStorage.setItem('cert-tracker.lastPublish', JSON.stringify(lastPublish)); } catch { /* noop */ }
+  }
+
+  // ---------- 反映先の設定 ----------
+
+  let ghDialog = null;
+
+  function openGhSettings() {
+    if (!ghDialog) buildGhSettings();
+    const cfg = ghConfig();
+    const f = ghDialog.querySelector('form').elements;
+    f.owner.value = cfg.owner;
+    f.repo.value = cfg.repo;
+    f.branch.value = cfg.branch;
+    f.path.value = cfg.path;
+    f.token.value = ghToken();
+    ghDialog.querySelector('.gh-status').textContent = '';
+    ghDialog.showModal();
+  }
+
+  function buildGhSettings() {
+    ghDialog = document.createElement('dialog');
+    ghDialog.className = 'dialog dev-editor';
+    ghDialog.innerHTML = [
+      '<form method="dialog" class="form">',
+      '  <h2 tabindex="-1" autofocus>反映先の設定</h2>',
+      '  <p class="dev-note">',
+      '    GitHub の個人アクセストークンを使って js/presets.js に直接コミットします。',
+      '    トークンはこの端末にだけ保存され、リポジトリには含まれません。',
+      '    <br><strong>Fine-grained token</strong> で、このリポジトリだけに絞り、',
+      '    権限は <strong>Contents: Read and write</strong> のみで足ります。',
+      '  </p>',
+      '  <label class="field"><span class="label">アクセストークン</span>',
+      '    <input type="password" name="token" autocomplete="off" placeholder="github_pat_…"></label>',
+      '  <div class="row">',
+      '    <label class="field"><span class="label">オーナー</span>',
+      '      <input type="text" name="owner" placeholder="KURU77"></label>',
+      '    <label class="field"><span class="label">リポジトリ</span>',
+      '      <input type="text" name="repo" placeholder="cert-tracker"></label>',
+      '  </div>',
+      '  <div class="row">',
+      '    <label class="field"><span class="label">ブランチ</span>',
+      '      <input type="text" name="branch" placeholder="main"></label>',
+      '    <label class="field"><span class="label">ファイル</span>',
+      '      <input type="text" name="path" placeholder="js/presets.js"></label>',
+      '  </div>',
+      '  <p class="gh-status"></p>',
+      '  <menu class="dialog-actions">',
+      '    <button type="button" class="btn link-danger" data-act="gh-forget">トークンを消す</button>',
+      '    <button type="button" class="btn" data-act="gh-test">接続テスト</button>',
+      '    <button type="submit" class="btn btn-primary">保存</button>',
+      '  </menu>',
+      '</form>',
+    ].join('\n');
+    document.body.append(ghDialog);
+
+    ghDialog.querySelector('form').addEventListener('submit', saveGhSettings);
+    ghDialog.addEventListener('click', (e) => {
+      const act = e.target.closest('[data-act]')?.dataset.act;
+      if (act === 'gh-test') testGhConnection();
+      if (act === 'gh-forget') forgetToken();
+    });
+  }
+
+  function saveGhSettings() {
+    const f = ghDialog.querySelector('form').elements;
+    const cfg = {
+      owner: f.owner.value.trim() || GH_DEFAULTS.owner,
+      repo: f.repo.value.trim() || GH_DEFAULTS.repo,
+      branch: f.branch.value.trim() || GH_DEFAULTS.branch,
+      path: f.path.value.trim() || GH_DEFAULTS.path,
+    };
+    try {
+      localStorage.setItem(GH_KEY, JSON.stringify(cfg));
+      const t = f.token.value.trim();
+      if (t) localStorage.setItem(GH_TOKEN_KEY, t);
+    } catch (err) {
+      console.error(err);
+    }
+    note('反映先を保存しました');
+  }
+
+  function forgetToken() {
+    try { localStorage.removeItem(GH_TOKEN_KEY); } catch { /* noop */ }
+    ghDialog.querySelector('form').elements.token.value = '';
+    ghDialog.querySelector('.gh-status').textContent = 'トークンを消しました。';
+  }
+
+  async function testGhConnection() {
+    const f = ghDialog.querySelector('form').elements;
+    const status = ghDialog.querySelector('.gh-status');
+    const t = f.token.value.trim();
+    if (!t) { status.textContent = 'トークンを入れてください。'; return; }
+    try { localStorage.setItem(GH_TOKEN_KEY, t); } catch { /* noop */ }
+
+    status.textContent = '確認中…';
+    const owner = f.owner.value.trim() || GH_DEFAULTS.owner;
+    const repo = f.repo.value.trim() || GH_DEFAULTS.repo;
+    const branch = f.branch.value.trim() || GH_DEFAULTS.branch;
+    const path = f.path.value.trim() || GH_DEFAULTS.path;
+    try {
+      const file = await ghFetch(`/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`);
+      const src = fromBase64(file.content);
+      const count = (src.match(/\{ name: /g) || []).length;
+      status.textContent = `OK: ${path} を読めました（プリセット ${count} 件）。書き込み権限は反映時に確認されます。`;
+    } catch (err) {
+      status.textContent = `失敗: ${err.message}`;
+    }
+  }
+
   // ---------- 書き出し・読み込み ----------
 
   function download(filename, text, type) {
@@ -615,6 +862,8 @@
     get overrides() { return overrides; },
     exportDiff,
     exportFull,
+    publish: publishToGitHub,
+    settings: openGhSettings,
     toPresetsSource: () => toPresetsSource(materialize()),
   };
 })();

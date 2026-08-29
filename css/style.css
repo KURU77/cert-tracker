@@ -782,6 +782,14 @@ body {
 
 .dev-editor { width: min(560px, calc(100% - 1.5rem)); }
 
+.gh-status {
+  margin: 0;
+  font-size: .78rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 560px) {
   .dev-actions .btn { flex: 1 1 auto; }
 }
