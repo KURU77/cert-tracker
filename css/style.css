@@ -391,6 +391,15 @@ body {
 .badge.prio-mid  { background: var(--warn-weak); color: var(--warn); }
 .badge.prio-low  { background: var(--surface-2); color: var(--text-muted); }
 
+/* 教育訓練給付。給付率が高い制度ほど目立つ色にする */
+.badge.training-professional { background: var(--ok-weak); color: var(--ok); }
+.badge.training-specific     { background: var(--ok-weak); color: var(--ok); }
+.badge.training-general      { background: var(--accent-weak); color: var(--accent); }
+.badge.training-yes          { background: var(--ok-weak); color: var(--ok); }
+.badge.training-none         { background: var(--surface-2); color: var(--text-muted); }
+
+.card-actions .btn.btn-training { color: var(--ok); }
+
 /* ---------- score ---------- */
 .score-row {
   display: flex;

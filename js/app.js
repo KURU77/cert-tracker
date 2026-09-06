@@ -14,6 +14,56 @@
     { value: 'failed',   label: '不合格' },
   ];
 
+  /* 厚生労働省の教育訓練給付制度。給付率は制度ごとに決まっている。
+     'none' は「調べたが対象講座が無かった」の意味で、未確認（空文字）と区別する。 */
+  const TRAINING_TIERS = [
+    { value: 'professional', label: '専門実践', hint: '専門実践教育訓練（給付率50〜80%）の対象講座あり' },
+    { value: 'specific',     label: '特定一般', hint: '特定一般教育訓練（給付率40%）の対象講座あり' },
+    { value: 'general',      label: '一般',     hint: '一般教育訓練（給付率20%）の対象講座あり' },
+    { value: 'yes',          label: '対象あり', hint: '対象講座あり。制度の区分までは未確認です' },
+    { value: 'none',         label: '対象なし', hint: '確認した時点では対象講座が見つかりませんでした' },
+  ];
+
+  /** 厚生労働省の講座検索。POST でしか動かないので、その場でフォームを作って投げる。 */
+  const KYUFU_ENDPOINT = 'https://www.kyufu.mhlw.go.jp/kensaku/SSR101Scr01S';
+
+  /**
+   * 厚労省の検索は空白を区切りとして扱うため、「世界遺産検定 2級」で投げると
+   * 「2級」に引っかかる講座まで拾って何百件も出てしまう。
+   * 補足の括弧と級・種別を落とし、残った最初の語だけで「その試験の講座があるか」を見る。
+   */
+  function trainingKeyword(name) {
+    let k = String(name).replace(/[（(][^）)]*[）)]/g, ' ');
+    k = k.replace(/[s　]*(準?[0-9０-９]+級|[甲乙丙]種[^s　]*|第[一二三四五六七八九十]+種[^s　]*)$/, ' ');
+    k = k.replace(/[s　]+/g, ' ').trim();
+    return k.split(' ')[0] || String(name);
+  }
+
+  function openTrainingSearch(keyword) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = KYUFU_ENDPOINT;
+    form.target = '_blank';
+    form.rel = 'noopener';
+    form.hidden = true;
+
+    const add = (name, value) => {
+      const i = document.createElement('input');
+      i.type = 'hidden';
+      i.name = name;
+      i.value = value;
+      form.append(i);
+    };
+    add('keyword', keyword);
+    add('searchCond', '');
+    // 通学（昼/夜/土日）・通信・eラーニングを全部対象にする
+    for (const m of ['1', '2', '3', '4', '5']) add('implementalMethods', m);
+
+    document.body.append(form);
+    form.submit();
+    form.remove();
+  }
+
   const PRIORITIES = [
     { value: 'high', label: '優先度 高', weight: 0 },
     { value: 'mid',  label: '優先度 中', weight: 1 },
@@ -100,6 +150,7 @@
       fee: toNumberOrNull(item.fee),
       url: typeof item.url === 'string' ? item.url : '',
       memo: String(item.memo ?? ''),
+      training: TRAINING_TIERS.some((t) => t.value === item.training) ? item.training : '',
       attempts: Array.isArray(item.attempts) ? item.attempts.map(normalizeAttempt) : [],
       createdAt: Number(item.createdAt) || Date.now(),
       updatedAt: Number(item.updatedAt) || Date.now(),
@@ -348,6 +399,15 @@
       badge(priorityLabel(item.priority), `prio-${item.priority}`)
     );
     if (item.category) badges.append(badge(item.category, ''));
+    if (item.training) {
+      const tier = TRAINING_TIERS.find((t) => t.value === item.training);
+      const label = item.training === 'none' ? '給付金対象なし'
+        : item.training === 'yes' ? '給付金対象'
+        : `給付金 ${tier.label}`;
+      const b = badge(label, `training-${item.training}`);
+      b.title = tier.hint;
+      badges.append(b);
+    }
     top.append(badges);
     li.append(top);
 
@@ -477,6 +537,7 @@
     actions.className = 'card-actions';
     actions.append(
       actionBtn('スコアを記録', 'add-attempt'),
+      actionBtn('給付金', 'training', 'btn-training'),
       actionBtn('編集', 'edit'),
       actionBtn('削除', 'delete', 'link-danger')
     );
@@ -636,6 +697,7 @@
     const f = el.certForm.elements;
     f.name.value = preset.name;
     f.short.value = preset.short ?? '';
+    f.training.value = preset.training ?? '';
     if (preset.category) f.category.value = preset.category;
 
     // scoreType が無いプリセットは合格基準が公表されていないもの。
@@ -672,6 +734,7 @@
     const f = el.certForm.elements;
     f.name.value = item?.name ?? '';
     f.short.value = item?.short ?? '';
+    f.training.value = item?.training ?? '';
     f.category.value = item?.category ?? '';
     f.priority.value = item?.priority ?? 'mid';
     f.status.value = item?.status ?? 'planning';
@@ -714,6 +777,7 @@
     const data = {
       name: f.name.value.trim(),
       short: f.short.value.trim(),
+      training: f.training.value,
       category: f.category.value.trim(),
       priority: f.priority.value,
       status: f.status.value,
@@ -928,6 +992,7 @@
       justPicked = false;
       // 名前を打ち替えたらプリセット由来の短縮名は当てにならないので捨てる。
       el.certForm.elements.short.value = '';
+      el.certForm.elements.training.value = '';
       renderSuggest();
     });
     el.nameInput.addEventListener('focus', renderSuggest);
@@ -971,6 +1036,12 @@
         case 'add-attempt':
           openAttemptDialog(item);
           break;
+        case 'training': {
+          const kw = trainingKeyword(item.name);
+          openTrainingSearch(kw);
+          toast(`厚生労働省の講座検索を開きました（「${kw}」で検索）`);
+          break;
+        }
         case 'delete':
           if (!confirm(`「${item.name}」を削除します。よろしいですか？`)) return;
           items = items.filter((i) => i.id !== id);

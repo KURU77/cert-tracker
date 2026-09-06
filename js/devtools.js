@@ -31,7 +31,7 @@
   const GH_TOKEN_KEY = 'cert-tracker.githubToken';  // トークンは別キーに分けて持つ
 
   const FIELDS = ['name', 'short', 'alias', 'category', 'scoreType',
-                  'targetScore', 'maxScore', 'scoreUnit', 'fee', 'url', 'memo'];
+                  'targetScore', 'maxScore', 'scoreUnit', 'fee', 'url', 'memo', 'training'];
 
   const CATEGORIES = [
     'IT', 'ビジネス', '医療・福祉', '技術・工業', '語学', '会計・金融', '法律',
@@ -362,6 +362,7 @@
     if (p.targetScore != null) bits.push(`目標 ${p.targetScore}${p.scoreUnit ?? ''}`);
     else if (p.scoreType === 'pass') bits.push('合否のみ');
     if (p.fee != null) bits.push(`${p.fee.toLocaleString('ja-JP')}円`);
+    if (p.training) bits.push(`給付金: ${p.training}`);
 
     li.append(mainCell(p.name, bits.join(' ・ ')));
     li.append(actionBtn('edit', p.name, '編集', ''));
@@ -436,6 +437,15 @@
       '  </div>',
       '  <label class="field"><span class="label">公式サイトURL</span>',
       '    <input type="url" name="url" placeholder="https://…"></label>',
+      '  <label class="field"><span class="label">教育訓練給付（厚労省）</span>',
+      '    <select name="training">',
+      '      <option value="">未確認</option>',
+      '      <option value="professional">専門実践（50〜80%）の対象講座あり</option>',
+      '      <option value="specific">特定一般（40%）の対象講座あり</option>',
+      '      <option value="general">一般（20%）の対象講座あり</option>',
+      '      <option value="yes">対象講座あり（区分は未確認）</option>',
+      '      <option value="none">確認したが対象講座なし</option>',
+      '    </select></label>',
       '  <label class="field"><span class="label">メモ（合格基準など）</span>',
       '    <textarea name="memo" rows="2" maxlength="200"></textarea></label>',
       '  <menu class="dialog-actions">',
@@ -470,6 +480,7 @@
       fee: num(f.fee.value),
       url: f.url.value.trim(),
       memo: f.memo.value.trim(),
+      training: f.training.value,
     });
     if (!next.name) return;
 
