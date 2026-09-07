@@ -34,8 +34,8 @@
    */
   function trainingKeyword(name) {
     let k = String(name).replace(/[（(][^）)]*[）)]/g, ' ');
-    k = k.replace(/[s　]*(準?[0-9０-９]+級|[甲乙丙]種[^s　]*|第[一二三四五六七八九十]+種[^s　]*)$/, ' ');
-    k = k.replace(/[s　]+/g, ' ').trim();
+    k = k.replace(/[\s　]*(準?[0-9０-９]+級|[甲乙丙]種[^\s　]*|第[一二三四五六七八九十]+種[^\s　]*)$/, ' ');
+    k = k.replace(/[\s　]+/g, ' ').trim();
     return k.split(' ')[0] || String(name);
   }
 

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>資格ずかん｜資格・検定トラッカー</title>
+<meta name="description" content="どんな資格・検定があるのかを分野ごとに眺められる一覧。気になったものはそのままマイリストに追加できます。">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14161b" media="(prefers-color-scheme: dark)">
+<meta name="format-detection" content="telephone=no">
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="資格トラッカー">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <h1 class="logo"><span aria-hidden="true">📚</span> 資格ずかん</h1>
+    <div class="header-actions">
+      <button type="button" id="themeToggle" class="icon-btn" title="テーマ切り替え" aria-label="テーマ切り替え">🌙</button>
+      <a class="btn btn-primary" href="index.html">マイリストへ</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <p class="browse-lead">
+    アプリに登録されている資格・検定を、分野ごとにまとめて眺められるページです。
+    受けるかどうかは決めていなくて大丈夫。気になったものだけ「＋ 追加」でマイリストに送れます。
+  </p>
+
+  <section class="toolbar" aria-label="絞り込み">
+    <input type="search" id="search" class="search" placeholder="キーワードで探す（例: 英語、ドローン、食品）" aria-label="キーワード検索">
+    <label class="check">
+      <input type="checkbox" id="onlyTraining">
+      <span>教育訓練給付の対象だけ</span>
+    </label>
+  </section>
+
+  <nav class="chips" id="chips" aria-label="分野で絞り込み"></nav>
+
+  <div class="browse-bar">
+    <p class="browse-count" id="count" aria-live="polite"></p>
+    <div class="browse-bar-actions">
+      <button type="button" id="randomBtn" class="btn">🎲 ランダムに10件</button>
+      <button type="button" id="toggleAll" class="btn" aria-pressed="false">すべて開く</button>
+    </div>
+  </div>
+
+  <section class="pickup" id="pickup" aria-label="ランダムに選んだ資格" hidden></section>
+
+  <div id="sections"></div>
+
+  <p class="empty" id="empty" hidden>
+    条件に合う資格・検定が見つかりませんでした。<br>
+    キーワードを短くするか、分野を「すべて」に戻してみてください。
+  </p>
+
+</main>
+
+<footer class="site-footer wrap">
+  <p>
+    受験料・合格基準・給付の対象講座は変わることがあります。申し込む前に必ず公式サイトでご確認ください。
+  </p>
+</footer>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="js/presets.js"></script>
+<script src="js/browse.js"></script>
+</body>
+</html>

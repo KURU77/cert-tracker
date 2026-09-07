@@ -8,16 +8,18 @@
  * 収録ファイルを増やしたときは PRECACHE に足し、VERSION を上げる。
  */
 
-const VERSION = 'v7';
+const VERSION = 'v8';
 const CACHE = `cert-tracker-${VERSION}`;
 
 /** 初回インストール時にまとめて取っておくファイル。これだけあれば完全オフラインで動く。 */
 const PRECACHE = [
   './',
   'index.html',
+  'browse.html',
   'css/style.css',
   'js/presets.js',
   'js/app.js',
+  'js/browse.js',
   'js/preset-patch.js',
   'js/devtools.js',
   'manifest.webmanifest',

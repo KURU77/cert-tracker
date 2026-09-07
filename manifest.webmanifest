@@ -11,6 +11,14 @@
   "background_color": "#3358E8",
   "theme_color": "#ffffff",
   "categories": ["education", "productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "資格ずかん",
+      "short_name": "ずかん",
+      "description": "どんな資格・検定があるのかを分野ごとに眺める",
+      "url": "browse.html"
+    }
+  ],
   "icons": [
     {
       "src": "assets/favicon-32.png",

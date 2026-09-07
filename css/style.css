@@ -317,13 +317,18 @@ body {
   display: flex;
   align-items: start;
   gap: .5rem;
+  /* バッジが4つ並ぶと見出しの幅が潰れて1文字ずつ折り返されるため、
+     幅が足りないときはバッジのほうを次の行へ送る。 */
+  flex-wrap: wrap;
 }
 
 .card-title {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 700;
-  flex: 1;
+  /* 見出しは最低これだけの幅を確保してから縮める。 */
+  flex: 1 1 12rem;
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
@@ -830,4 +835,231 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+}
+
+/* ---------- 資格ずかん（browse.html） ---------- */
+
+/* .btn をリンクにも使うため。button と違って初期値が inline なので揃える。 */
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: .55;
+  cursor: default;
+}
+.btn:disabled:hover { background: var(--surface); }
+.btn-primary:disabled:hover { background: var(--accent); filter: none; }
+
+.browse-lead {
+  margin: 1.25rem 0 1rem;
+  font-size: .875rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* 「教育訓練給付の対象だけ」のようなチェック付きの絞り込み */
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem .8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: .85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.check input { accent-color: var(--accent); width: 1rem; height: 1rem; }
+
+/* 分野チップ。横スクロールにすると画面ごとずれて見えるので折り返す。 */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-bottom: 1rem;
+}
+
+.chip {
+  font: inherit;
+  font-size: .8rem;
+  padding: .3rem .7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chip:hover { color: var(--text); background: var(--surface-2); }
+
+.chip.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.browse-bar {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.browse-count {
+  margin: 0;
+  margin-right: auto;
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+
+.browse-bar-actions {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.browse-bar-actions .btn { font-size: .8rem; padding: .35rem .7rem; }
+
+/* ---------- ランダム表示 ---------- */
+.pickup {
+  border: 1px solid var(--accent);
+  background: var(--accent-weak);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.pickup-title {
+  margin: 0 0 .75rem;
+  font-size: .95rem;
+}
+
+.pickup .b-item { background: var(--surface); }
+.pickup-close { margin-top: .75rem; }
+
+/* ---------- 分野ごとのセクション ---------- */
+.b-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+
+.b-summary {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  flex-wrap: wrap;
+  padding: .85rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.b-summary::-webkit-details-marker { display: none; }
+
+/* 開閉の三角は自前で描く。ブラウザ標準のものは位置と色が揃わない。 */
+.b-summary::before {
+  content: "▸";
+  color: var(--text-muted);
+  font-size: .8rem;
+  transition: transform .15s;
+}
+
+.b-section[open] > .b-summary::before { transform: rotate(90deg); }
+.b-summary:hover { background: var(--surface-2); }
+
+.b-cat { font-weight: 700; font-size: .95rem; }
+
+.b-count {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.b-hint {
+  font-size: .75rem;
+  color: var(--text-muted);
+  flex: 1 1 100%;
+  padding-left: 1.2rem;
+}
+
+.b-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 .75rem .75rem;
+  display: grid;
+  gap: .5rem;
+}
+
+.b-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  padding: .7rem .8rem;
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+.b-head {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+
+.b-name {
+  margin: 0;
+  font-size: .9rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.b-tag {
+  font-size: .7rem;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: .05rem .45rem;
+}
+
+.b-meta {
+  margin: 0;
+  font-size: .75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.b-memo {
+  margin: 0;
+  font-size: .78rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.b-actions {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+  padding-top: .2rem;
+}
+
+.b-actions .btn { font-size: .75rem; padding: .3rem .6rem; }
+.b-actions .btn-training { color: var(--ok); }
+
+/* 画面が広いときは2列にして、ざっと眺めやすくする。 */
+@media (min-width: 720px) {
+  .b-list { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
 }
