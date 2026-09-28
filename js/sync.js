@@ -19,7 +19,7 @@
 
   /* Google Cloud で発行する OAuth クライアント ID。公開されて困る値ではない（秘密鍵ではない）。
      空のあいだは同期機能を表示しない。設定手順は README の「端末間の同期」を参照。 */
-  const GOOGLE_CLIENT_ID = '';
+  const GOOGLE_CLIENT_ID = '1088975026923-c25ot3oknerrbvqo2j378fmgbllae23c.apps.googleusercontent.com';
 
   const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
   const FILE_NAME = 'cert-tracker-sync.json';
