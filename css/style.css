@@ -1063,3 +1063,86 @@ a.btn {
 @media (min-width: 720px) {
   .b-list { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
 }
+
+/* ---------- 端末間の同期 ---------- */
+.sync-btn { position: relative; }
+
+/* 右上の小さな点で状態を示す。未接続のときは出さない。 */
+.sync-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--surface);
+  background: transparent;
+}
+
+.sync-btn[data-state="ok"] .sync-dot { background: var(--ok); }
+.sync-btn[data-state="syncing"] .sync-dot { background: var(--accent); animation: sync-pulse 1s ease-in-out infinite; }
+.sync-btn[data-state="needs-auth"] .sync-dot,
+.sync-btn[data-state="offline"] .sync-dot { background: var(--warn); }
+.sync-btn[data-state="error"] .sync-dot { background: var(--danger); }
+
+@keyframes sync-pulse { 50% { opacity: .3; } }
+
+.sync-body { display: flex; flex-direction: column; gap: .75rem; }
+.sync-body p { margin: 0; font-size: .875rem; line-height: 1.7; }
+.sync-body .hint { font-size: .75rem; }
+
+.sync-points {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: .8rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+  display: grid;
+  gap: .3rem;
+}
+
+.sync-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .35rem .9rem;
+  margin: 0;
+  font-size: .85rem;
+}
+
+.sync-info dt { color: var(--text-muted); font-weight: 600; }
+.sync-info dd { margin: 0; overflow-wrap: anywhere; }
+.sync-info dd[data-state="ok"] { color: var(--ok); font-weight: 600; }
+.sync-info dd[data-state="needs-auth"],
+.sync-info dd[data-state="offline"] { color: var(--warn); font-weight: 600; }
+.sync-info dd[data-state="error"] { color: var(--danger); font-weight: 600; }
+
+.sync-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+.sync-message {
+  margin: 0;
+  padding: .6rem .8rem;
+  border-radius: 8px;
+  background: var(--warn-weak);
+  color: var(--warn);
+  font-size: .8rem;
+  line-height: 1.6;
+}
+
+.sync-body .check { align-self: flex-start; white-space: normal; }
+
+/* Google へ移動する直前に出す幕。真っ白な画面で固まったように見えないように。 */
+.sync-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  color: var(--text);
+  font-size: .95rem;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-btn[data-state="syncing"] .sync-dot { animation: none; }
+}

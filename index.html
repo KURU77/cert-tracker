@@ -28,6 +28,8 @@
     <h1 class="logo"><span aria-hidden="true">🎓</span> 資格・検定トラッカー</h1>
     <div class="header-actions">
       <a class="icon-btn" href="browse.html" title="資格ずかん" aria-label="資格ずかん">📚</a>
+      <!-- 端末間の同期。sync.js にクライアント ID が設定されているときだけ表示される -->
+      <button type="button" id="syncBtn" class="icon-btn sync-btn" title="端末間の同期" aria-label="端末間の同期" data-state="off" hidden>☁️<span class="sync-dot" aria-hidden="true"></span></button>
       <button type="button" id="themeToggle" class="icon-btn" title="テーマ切り替え" aria-label="テーマ切り替え">🌙</button>
       <div class="menu">
         <button type="button" id="menuBtn" class="icon-btn" title="データ管理" aria-label="データ管理" aria-haspopup="true" aria-expanded="false">⋯</button>
@@ -91,8 +93,53 @@
 </main>
 
 <footer class="site-footer wrap">
-  <p>データはこのブラウザのローカルストレージにのみ保存されます。サーバーには送信されません。</p>
+  <p>データはこの端末に保存されます。☁️ から同期をオンにしたときだけ、あなたの Google ドライブ（アプリ専用の非表示フォルダ）にも保存されます。開発者を含め、ほかの人からは見えません。</p>
 </footer>
+
+<!-- 端末間の同期ダイアログ -->
+<dialog id="syncDialog" class="dialog">
+  <div class="form">
+    <h2 tabindex="-1" autofocus>端末間の同期</h2>
+    <p class="sync-message" id="syncMessage" hidden></p>
+
+    <div id="syncOff" class="sync-body">
+      <p>Google アカウントでログインすると、iPhone・iPad・パソコンのあいだでマイリストが自動で同期されます。</p>
+      <ul class="sync-points">
+        <li>保存先はあなたの Google ドライブの<strong>アプリ専用の非表示フォルダ</strong>。ドライブの一覧には出ず、開発者を含めほかの人からは見えません</li>
+        <li>このアプリが触れるのはそのフォルダだけです。ドライブのほかのファイルは読めません</li>
+        <li>オフラインでも今までどおり使え、つながったときに同期します</li>
+      </ul>
+      <button type="button" id="syncLogin" class="btn btn-primary">Google でログインして同期</button>
+    </div>
+
+    <div id="syncOn" class="sync-body" hidden>
+      <dl class="sync-info">
+        <dt>アカウント</dt><dd id="syncAccount"></dd>
+        <dt>状態</dt><dd id="syncStatus"></dd>
+        <dt>最終同期</dt><dd id="syncLast"></dd>
+      </dl>
+      <label class="check">
+        <input type="checkbox" id="syncAuto">
+        <span>起動時に自動で同期する</span>
+      </label>
+      <p class="hint">Google の確認は1時間で切れるため、起動したときに一瞬 Google の画面を経由してから戻ってきます。</p>
+      <div class="sync-actions">
+        <button type="button" id="syncNowBtn" class="btn btn-primary">今すぐ同期</button>
+        <button type="button" id="syncLogout" class="btn">この端末でログアウト</button>
+      </div>
+      <p class="hint">
+        ログアウトしても、この端末のデータとドライブのデータはどちらも残ります。
+        アプリの接続そのものを解除するには、Google アカウントの
+        <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer">サードパーティとの接続</a>
+        から削除してください。
+      </p>
+    </div>
+
+    <menu class="dialog-actions">
+      <button type="button" class="btn" data-close>閉じる</button>
+    </menu>
+  </div>
+</dialog>
 
 <!-- 追加・編集ダイアログ -->
 <dialog id="certDialog" class="dialog">
@@ -238,6 +285,8 @@
 <script src="js/preset-patch.js"></script>
 <!-- 開発者向けのプリセット編集ツール。app.js より前に読む必要がある -->
 <script src="js/devtools.js"></script>
+<!-- Google ドライブを使った端末間の同期。app.js より前に読む -->
+<script src="js/sync.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

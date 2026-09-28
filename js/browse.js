@@ -150,6 +150,7 @@
       return false;
     }
     myNames.add(preset.name);
+    window.CertSync?.notifyChange();
     toast(`「${preset.name}」をマイリストに追加しました`);
     return true;
   }
@@ -550,6 +551,11 @@
 
   initTheme();
   refreshMyNames();
+  // ほかの端末の変更が届いたら「追加済み」の表示を合わせる。
+  window.CertSync?.onRemoteApplied(() => {
+    refreshMyNames();
+    apply();
+  });
   buildChips();
   buildSections();
   bind();

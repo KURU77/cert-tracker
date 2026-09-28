@@ -127,6 +127,8 @@
   function save() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      // 端末間の同期がオンなら、少し待ってドライブへ送る。
+      window.CertSync?.notifyChange();
     } catch (err) {
       console.error('保存に失敗しました', err);
       toast('保存に失敗しました（保存容量が上限の可能性があります）');
@@ -849,7 +851,10 @@
         if (!Array.isArray(parsed)) throw new Error('形式が不正です');
         const incoming = parsed.map(normalize);
         const known = new Set(items.map((i) => i.id));
-        const added = incoming.filter((i) => !known.has(i.id));
+        const now = Date.now();
+        // 一度消したものをバックアップから戻したとき、同期の削除記録に負けて消えないように、
+        // 読み込んだ時刻を更新日時にする。
+        const added = incoming.filter((i) => !known.has(i.id)).map((i) => ({ ...i, updatedAt: now }));
         items = items.concat(added);
         save();
         render();
@@ -952,6 +957,7 @@
     $('#clearBtn').addEventListener('click', () => {
       if (!items.length) { toast('削除するデータがありません'); return; }
       if (!confirm(`登録されている${items.length}件をすべて削除します。よろしいですか？`)) return;
+      window.CertSync?.recordDeletion(items.map((i) => i.id));
       items = [];
       save();
       render();
@@ -1045,6 +1051,8 @@
         case 'delete':
           if (!confirm(`「${item.name}」を削除します。よろしいですか？`)) return;
           items = items.filter((i) => i.id !== id);
+          // 同期先に残っている古い版が復活しないよう、消したことを記録する。
+          window.CertSync?.recordDeletion([id]);
           save();
           render();
           toast('削除しました');
@@ -1093,6 +1101,12 @@
   initViewMode();
   load();
   render();
+
+  window.CertSync?.onRemoteApplied(() => {
+    load();
+    render();
+    toast('ほかの端末の変更を反映しました');
+  });
 
   if (document.readyState === 'complete') registerServiceWorker();
   else window.addEventListener('load', registerServiceWorker);
