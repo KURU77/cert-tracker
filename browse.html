@@ -45,6 +45,12 @@
       <input type="checkbox" id="onlyTraining">
       <span>教育訓練給付の対象だけ</span>
     </label>
+    <select id="renewFilter" aria-label="資格の更新で絞り込み">
+      <option value="">更新: すべて</option>
+      <option value="free">一度取れば更新不要</option>
+      <option value="keep">更新・会費が必要</option>
+      <option value="unknown">更新: 未調査</option>
+    </select>
   </section>
 
   <nav class="chips" id="chips" aria-label="分野で絞り込み"></nav>
@@ -77,6 +83,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="js/presets.js"></script>
+<script src="js/renewal.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/browse.js"></script>
 </body>

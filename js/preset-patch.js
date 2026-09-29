@@ -11,7 +11,8 @@
   'use strict';
 
   const FIELDS = ['name', 'short', 'alias', 'category', 'scoreType',
-                  'targetScore', 'maxScore', 'scoreUnit', 'fee', 'url', 'memo', 'training'];
+                  'targetScore', 'maxScore', 'scoreUnit', 'fee', 'url', 'memo', 'training',
+                  'renew', 'renewYears', 'renewFee', 'renewNote'];
 
   const ADDED_HEADER = '  /* ---------- 開発者ツールから追加 ---------- */';
 

@@ -31,7 +31,8 @@
   const GH_TOKEN_KEY = 'cert-tracker.githubToken';  // トークンは別キーに分けて持つ
 
   const FIELDS = ['name', 'short', 'alias', 'category', 'scoreType',
-                  'targetScore', 'maxScore', 'scoreUnit', 'fee', 'url', 'memo', 'training'];
+                  'targetScore', 'maxScore', 'scoreUnit', 'fee', 'url', 'memo', 'training',
+                  'renew', 'renewYears', 'renewFee', 'renewNote'];
 
   const CATEGORIES = [
     'IT', 'ビジネス', '医療・福祉', '技術・工業', '語学', '会計・金融', '法律',
@@ -363,6 +364,7 @@
     else if (p.scoreType === 'pass') bits.push('合否のみ');
     if (p.fee != null) bits.push(`${p.fee.toLocaleString('ja-JP')}円`);
     if (p.training) bits.push(`給付金: ${p.training}`);
+    if (p.renew) bits.push(`更新: ${p.renew}${p.renewYears ? `/${p.renewYears}年` : ''}`);
 
     li.append(mainCell(p.name, bits.join(' ・ ')));
     li.append(actionBtn('edit', p.name, '編集', ''));
@@ -446,6 +448,23 @@
       '      <option value="yes">対象講座あり（区分は未確認）</option>',
       '      <option value="none">確認したが対象講座なし</option>',
       '    </select></label>',
+      '  <div class="row">',
+      '    <label class="field"><span class="label">資格の更新</span>',
+      '      <select name="renew">',
+      '        <option value="">未調査</option>',
+      '        <option value="none">更新不要（生涯有効）</option>',
+      '        <option value="required">更新あり（講習・研修・再受験など）</option>',
+      '        <option value="member">会費制（登録・年会費で維持）</option>',
+      '        <option value="expiry">成績に有効期限あり（再受験）</option>',
+      '        <option value="na">対象外（採用試験・適性検査など）</option>',
+      '      </select></label>',
+      '    <label class="field"><span class="label">周期（年）</span>',
+      '      <input type="number" name="renewYears" min="0" step="1" placeholder="例: 5"></label>',
+      '    <label class="field"><span class="label">1回の費用（円）</span>',
+      '      <input type="number" name="renewFee" min="0" step="1" placeholder="例: 16500"></label>',
+      '  </div>',
+      '  <label class="field"><span class="label">更新の説明</span>',
+      '    <input type="text" name="renewNote" maxlength="200" placeholder="例: 5年ごとに法定講習（12,000円）＋交付手数料4,500円"></label>',
       '  <label class="field"><span class="label">メモ（合格基準など）</span>',
       '    <textarea name="memo" rows="2" maxlength="200"></textarea></label>',
       '  <menu class="dialog-actions">',
@@ -481,6 +500,10 @@
       url: f.url.value.trim(),
       memo: f.memo.value.trim(),
       training: f.training.value,
+      renew: f.renew.value,
+      renewYears: num(f.renewYears.value),
+      renewFee: num(f.renewFee.value),
+      renewNote: f.renewNote.value.trim(),
     });
     if (!next.name) return;
 

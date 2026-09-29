@@ -1146,3 +1146,36 @@ a.btn {
 @media (prefers-reduced-motion: reduce) {
   .sync-btn[data-state="syncing"] .sync-dot { animation: none; }
 }
+
+/* ---------- 資格の更新 ---------- */
+.renew { white-space: nowrap; }
+.meta .renew { font-weight: 600; }
+.renew-none { color: var(--ok); }
+.renew-required { color: var(--warn); }
+.renew-member { color: var(--warn); }
+.renew-expiry { color: var(--accent); }
+.renew-na { color: var(--text-muted); }
+
+.b-renew {
+  margin: 0;
+  font-size: .75rem;
+  line-height: 1.5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .15rem .5rem;
+  align-items: baseline;
+}
+
+.b-renew .renew { font-weight: 700; white-space: normal; }
+.b-renew-note { color: var(--text-muted); overflow-wrap: anywhere; }
+
+/* ずかんの絞り込みの select。検索欄と同じ見た目・同じ16px（iOSの拡大防止） */
+#renewFilter {
+  font: inherit;
+  font-size: var(--input-font-size);
+  padding: .45rem .6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}

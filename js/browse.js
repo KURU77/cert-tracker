@@ -53,6 +53,7 @@
   const el = {
     search: $('#search'),
     onlyTraining: $('#onlyTraining'),
+    renewFilter: $('#renewFilter'),
     chips: $('#chips'),
     sections: $('#sections'),
     count: $('#count'),
@@ -238,6 +239,24 @@
       li.append(m);
     }
 
+    // 更新の要否と、何をすれば更新できるか
+    const renew = window.CertRenewal?.badge(p);
+    if (renew) {
+      const r = document.createElement('p');
+      r.className = 'b-renew';
+      const tag = document.createElement('span');
+      tag.className = `renew ${renew.cls}`;
+      tag.textContent = `🔁 ${renew.text}`;
+      r.append(tag);
+      if (p.renewNote) {
+        const note = document.createElement('span');
+        note.className = 'b-renew-note';
+        note.textContent = p.renewNote;
+        r.append(note);
+      }
+      li.append(r);
+    }
+
     if (p.memo) {
       const memo = document.createElement('p');
       memo.className = 'b-memo';
@@ -374,6 +393,8 @@
 
     let hits = matches(query);
     if (onlyTraining) hits = hits.filter((p) => p.training && p.training !== 'none');
+    const renewFilter = el.renewFilter.value;
+    if (renewFilter) hits = hits.filter((p) => window.CertRenewal?.group(p) === renewFilter);
     if (activeCategory) hits = hits.filter((p) => (p.category || 'その他') === activeCategory);
 
     const byCat = new Map();
@@ -384,7 +405,7 @@
     }
 
     // 検索や給付金の絞り込みが効いているときは、結果が畳まれたままだと気づけないので自動で開く。
-    const narrowed = Boolean(query) || onlyTraining;
+    const narrowed = Boolean(query) || onlyTraining || Boolean(renewFilter);
 
     for (const [cat, s] of sectionMap) {
       const list = byCat.get(cat) ?? [];
@@ -521,6 +542,7 @@
 
     el.search.addEventListener('input', debounce(apply, 160));
     el.onlyTraining.addEventListener('change', apply);
+    el.renewFilter.addEventListener('change', apply);
     el.randomBtn.addEventListener('click', showRandom);
 
     el.toggleAll.addEventListener('click', () => {

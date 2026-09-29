@@ -472,6 +472,16 @@
       span.textContent = `💴 ${item.fee.toLocaleString('ja-JP')}円`;
       meta.append(span);
     }
+    // 更新の要否。登録時ではなく表示のたびにプリセットから引くので、
+    // あとから調べて足した更新情報も、登録済みの資格にそのまま出る。
+    const renew = window.CertRenewal?.badge(presetByName.get(item.name));
+    if (renew && presetByName.get(item.name).renew !== 'na') {
+      const span = document.createElement('span');
+      span.className = `renew ${renew.cls}`;
+      span.textContent = `🔁 ${renew.text}`;
+      span.title = renew.title;
+      meta.append(span);
+    }
     if (meta.children.length) li.append(meta);
 
     // --- memo ---
@@ -600,12 +610,16 @@
 
   let presetIndex = buildPresetIndex();
 
+  /** 名前からプリセットを引くための表。カードに更新情報を出すのに使う。 */
+  let presetByName = new Map(PRESETS.map((p) => [p.name, p]));
+
   // 開発者向けのプリセット編集ツールが中身を書き換えたときに、
   // 再読み込みなしで候補検索へ反映させるための入口。
   window.__certTracker = {
     reloadPresets() {
       PRESETS = Array.isArray(window.CERT_PRESETS) ? window.CERT_PRESETS : [];
       presetIndex = buildPresetIndex();
+      presetByName = new Map(PRESETS.map((p) => [p.name, p]));
     },
     get render() { return render; },
     get toast() { return toast; },
@@ -646,6 +660,11 @@
       parts.push('目標は自分で設定');
     }
     if (p.fee != null) parts.push(`${p.fee.toLocaleString('ja-JP')}円`);
+    if (p.renew === 'none') parts.push('更新不要');
+    else if (p.renew === 'required' || p.renew === 'member') {
+      const c = window.CertRenewal?.cycle(p);
+      parts.push(c ? `更新 ${c}` : '更新あり');
+    }
     return parts.join('・');
   }
 
